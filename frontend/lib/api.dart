@@ -2,9 +2,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'models.dart';
 import 'session.dart';
+import 'package:flutter/foundation.dart';
 
-const String baseUrl = 'http://127.0.0.1:8000';
+const String _apiOverride = String.fromEnvironment('API_URL');
 
+String get baseUrl {
+  if (_apiOverride.isNotEmpty) return _apiOverride;
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    return 'http://10.0.2.2:8000';
+  }
+  return 'http://127.0.0.1:8000';
+}
 class ApiException implements Exception {
   final int status;
   final String message;
