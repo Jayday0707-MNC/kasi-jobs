@@ -7,6 +7,7 @@ import 'employer_state.dart';
 import 'models.dart';
 import 'page_header.dart';
 import 'theme.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 const _hints = {
   'owner_id': 'ID card or passport. A clear photo or scan.',
@@ -39,26 +40,47 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _pick(String type) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
-    );
-    if (result == null || result.isEmpty) return;
-    final f = result.first;
-    final path = f.path;
-    if (path == null) {
-      _toast('Could not read that file. Try another one.');
+    dynamic result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+        withData: true,
+        withReadStream: !kIsWeb,
+      );
+    } catch (e) {
+      _toast('Could not open the file picker: $e');
       return;
     }
-    final bytes = await File(path).readAsBytes();
+    if (result == null || result.files.isEmpty) return;
+    final f = result.files.first;
+
+    List<int>? bytes = f.bytes;
+    if (bytes == null && f.readStream != null) {
+      final data = <int>[];
+      await for (final chunk in f.readStream!) {
+        data.addAll(chunk);
+        if (data.length > 5 * 1024 * 1024) break;
+      }
+      bytes = data;
+    }
+    if (bytes == null || bytes.isEmpty) {
+      _toast(
+        'Could not read "${f.name}" (${f.size} bytes). Save it on this device and pick it again.',
+      );
+      return;
+    }
     if (bytes.length > 5 * 1024 * 1024) {
       _toast('That file is too large (maximum 5 MB).');
       return;
     }
+
     setState(() => busyType = type);
     try {
       await Api.uploadDocument(type, bytes, f.name);
@@ -123,7 +145,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     Text(
                       '$uploaded of $total documents uploaded',
                       style: const TextStyle(
-                          color: Colors.white, fontWeight: FontWeight.w700),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -138,8 +162,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Center(
                               child: employerState.error != null
-                                  ? Text(employerState.error!,
-                                      style: TextStyle(color: cs.error))
+                                  ? Text(
+                                      employerState.error!,
+                                      style: TextStyle(color: cs.error),
+                                    )
                                   : const CircularProgressIndicator(),
                             ),
                           )
@@ -164,16 +190,20 @@ class _VerificationScreenState extends State<VerificationScreen> {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.lock_rounded,
-                                      size: 18, color: cs.onSurfaceVariant),
+                                  Icon(
+                                    Icons.lock_rounded,
+                                    size: 18,
+                                    color: cs.onSurfaceVariant,
+                                  ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Your documents are private. Only the Kasi Jobs admin can open them, and job seekers never see them. Accepted: PDF, JPG or PNG, up to 5 MB each.',
                                       style: TextStyle(
-                                          color: cs.onSurfaceVariant,
-                                          fontSize: 13,
-                                          height: 1.4),
+                                        color: cs.onSurfaceVariant,
+                                        fontSize: 13,
+                                        height: 1.4,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -237,23 +267,31 @@ class _DocCard extends StatelessWidget {
                     color: kViolet.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(_icons[required.type] ?? Icons.description_rounded,
-                      color: kViolet),
+                  child: Icon(
+                    _icons[required.type] ?? Icons.description_rounded,
+                    color: kViolet,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(required.label,
-                          style: text.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        required.label,
+                        style: text.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(_hints[required.type] ?? '',
-                          style: TextStyle(
-                              color: cs.onSurfaceVariant,
-                              fontSize: 13,
-                              height: 1.35)),
+                      Text(
+                        _hints[required.type] ?? '',
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -266,8 +304,10 @@ class _DocCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(999),
@@ -285,14 +325,19 @@ class _DocCard extends StatelessWidget {
                 if (d != null)
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 260),
-                    child: Text(d.filename,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            color: cs.onSurfaceVariant, fontSize: 13)),
+                    child: Text(
+                      d.filename,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
               ],
             ),
-            if (d?.status == 'rejected' && (d?.reviewNote ?? '').isNotEmpty) ...[
+            if (d?.status == 'rejected' &&
+                (d?.reviewNote ?? '').isNotEmpty) ...[
               const SizedBox(height: 10),
               Container(
                 width: double.infinity,

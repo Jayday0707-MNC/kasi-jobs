@@ -8,6 +8,8 @@ from ..schemas import RejectIn
 from ..security import create_file_token, require_role
 from ..verification import doc_out, verification_status
 from .jobs import job_out
+from ..notifications import EMAIL_MODE, SMS_MODE
+from ..otp import OTP_REQUIRED
 
 router = APIRouter(
     prefix="/admin",
@@ -132,3 +134,6 @@ def recent_notifications(db: Session = Depends(get_db)):
         }
         for n in db.scalars(q).all()
     ]
+@router.get("/delivery")
+def delivery_modes():
+    return {"sms": SMS_MODE, "email": EMAIL_MODE, "otp_required": OTP_REQUIRED}

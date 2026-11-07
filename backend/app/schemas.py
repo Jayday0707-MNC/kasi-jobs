@@ -31,6 +31,7 @@ class RegisterIn(BaseModel):
     business_name: str | None = Field(default=None, max_length=150)
     consent_sms: bool = False
     consent_email: bool = False
+    otp_channel: Literal["sms", "email"] = "sms"
 
     @field_validator("phone")
     @classmethod
@@ -43,6 +44,8 @@ class RegisterIn(BaseModel):
             raise ValueError("An email address is required for email alerts")
         if self.role == "employer" and not self.business_name:
             raise ValueError("Business name is required for employers")
+        if self.otp_channel == "email" and not self.email:
+            raise ValueError("An email address is required to get the code by email")
         return self
 
 
@@ -96,3 +99,24 @@ class SubscriptionIn(BaseModel):
     
 class RejectIn(BaseModel):
     reason: str = Field(min_length=5, max_length=500)
+    
+class OtpRequestIn(BaseModel):
+    phone: str
+    password: str
+    channel: Literal["sms", "email"] = "sms"
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: str) -> str:
+        return normalize_phone(v)
+
+
+class OtpVerifyIn(BaseModel):
+    phone: str
+    password: str
+    code: str = Field(pattern=r"^\d{6}$")
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: str) -> str:
+        return normalize_phone(v)

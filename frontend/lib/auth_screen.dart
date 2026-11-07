@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'models.dart';
 import 'session.dart';
+import 'otp_screen.dart';
 
 InputDecoration _dec(String label, {String? hint}) => InputDecoration(
       labelText: label,
@@ -117,13 +118,23 @@ class _AuthScreenState extends State<AuthScreen> {
       } else {
         res = await Api.login(phone.text.trim(), password.text);
       }
+
+      if (res['needs_verification'] == true) {
+        await _goVerify(sendOnOpen: false);
+        return;
+      }
+
       await session.save(
         res['access_token'] as String,
         res['user'] as Map<String, dynamic>,
       );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
-      if (mounted) setState(() => error = e.message);
+      if (e.message == 'phone_not_verified') {
+        await _goVerify(sendOnOpen: true);
+      } else if (mounted) {
+        setState(() => error = e.message);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => error = 'Could not reach the server. Is the backend running?');
@@ -131,6 +142,20 @@ class _AuthScreenState extends State<AuthScreen> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> _goVerify({required bool sendOnOpen}) async {
+    final done = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => OtpScreen(
+          phone: phone.text.trim(),
+          password: password.text,
+          hasEmail: register && email.text.trim().isNotEmpty,
+          sendOnOpen: sendOnOpen,
+        ),
+      ),
+    );
+    if (done == true && mounted) Navigator.of(context).pop(true);
   }
 
   @override

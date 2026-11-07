@@ -27,6 +27,7 @@ class User(Base):
     area_id: Mapped[int | None] = mapped_column(ForeignKey("areas.id"), nullable=True)
     consent_sms: Mapped[bool] = mapped_column(Boolean, default=False)
     consent_email: Mapped[bool] = mapped_column(Boolean, default=False)
+    account_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     area: Mapped["Area | None"] = relationship()
@@ -103,3 +104,13 @@ class EmployerDocument(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, approved, rejected
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+class OtpCode(Base):
+    __tablename__ = "otp_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(10))  # sms or email
+    code_hash: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(default=0)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

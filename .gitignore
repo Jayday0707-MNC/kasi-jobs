@@ -13,3 +13,5 @@ __pycache__/
 # editor and system files
 .vscode/
 Thumbs.db
+.vercel
+.env*

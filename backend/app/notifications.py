@@ -41,13 +41,18 @@ def send_sms(to: str, text: str) -> str:
         return "console"
 
     if SMS_MODE == "bulksms":
+        token_id = os.getenv("BULKSMS_USERNAME")
+        token_secret = os.getenv("BULKSMS_PASSWORD")
+        if not token_id or not token_secret:
+            raise RuntimeError("BULKSMS_USERNAME and BULKSMS_PASSWORD are not set")
         resp = httpx.post(
             "https://api.bulksms.com/v1/messages",
-            auth=(os.getenv("BULKSMS_USERNAME"), os.getenv("BULKSMS_PASSWORD")),
+            auth=(token_id, token_secret),
             json={"to": to, "body": text},
             timeout=20,
         )
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            raise RuntimeError(f"BulkSMS {resp.status_code}: {resp.text[:300]}")
         return resp.text[:500]
 
     raise RuntimeError(f"Unknown SMS_MODE: {SMS_MODE}")
@@ -121,4 +126,5 @@ def send_job_alerts(job_id: int) -> None:
                 _deliver(db, user, job, "sms", lambda: send_sms(user.phone, sms_text))
             if user.consent_email and user.email:
                 _deliver(db, user, job, "email", lambda: send_email(user.email, subject, body))
+                print(f"Alerts: email={EMAIL_MODE} sms={SMS_MODE}")
                 print(f"Alerts: email={EMAIL_MODE} sms={SMS_MODE}")

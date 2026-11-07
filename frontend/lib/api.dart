@@ -47,6 +47,7 @@ class Api {
       if (body != null) 'Content-Type': 'application/json',
       if (auth && session.token != null)
         'Authorization': 'Bearer ${session.token}',
+        
     };
 
     final http.Response res;
@@ -175,5 +176,19 @@ class Api {
   static Future<void> rejectEmployer(int id, String reason) async {
     await _request('POST', '/admin/employers/$id/reject',
         body: {'reason': reason}, auth: true);
+  }
+
+  static Future<Map<String, dynamic>> sendOtp(String phone, String password,
+      {String channel = 'sms'}) async {
+    final res = await _request('POST', '/auth/otp/send',
+        body: {'phone': phone, 'password': password, 'channel': channel});
+    return res as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> verifyOtp(
+      String phone, String password, String code) async {
+    final res = await _request('POST', '/auth/otp/verify',
+        body: {'phone': phone, 'password': password, 'code': code});
+    return res as Map<String, dynamic>;
   }
 }

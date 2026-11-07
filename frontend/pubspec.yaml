@@ -38,7 +38,7 @@ dependencies:
   google_fonts: ^8.2.1
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
-  file_picker: ^13.3.2
+  file_picker: 8.3.0
 
 dev_dependencies:
   flutter_test:
