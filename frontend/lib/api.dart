@@ -9,10 +9,11 @@ const String _apiOverride = String.fromEnvironment('API_URL');
 String get baseUrl {
   if (_apiOverride.isNotEmpty) return _apiOverride;
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    return 'http://10.0.2.2:8000';
+    return 'https://kasi-jobs.onrender.com';
   }
-  return 'http://127.0.0.1:8000';
+  return 'https://kasi-jobs.onrender.com';
 }
+
 class ApiException implements Exception {
   final int status;
   final String message;
@@ -47,7 +48,6 @@ class Api {
       if (body != null) 'Content-Type': 'application/json',
       if (auth && session.token != null)
         'Authorization': 'Bearer ${session.token}',
-        
     };
 
     final http.Response res;
@@ -72,28 +72,36 @@ class Api {
       if (areaId != null) 'area_id=$areaId',
       if (categoryId != null) 'category_id=$categoryId',
     ].join('&');
-        final data = await _request(
-        'GET', query.isEmpty ? '/jobs' : '/jobs?$query',
-        auth: true) as List;
+    final data =
+        await _request(
+              'GET',
+              query.isEmpty ? '/jobs' : '/jobs?$query',
+              auth: true,
+            )
+            as List;
     return data.map((e) => Job.fromJson(e as Map<String, dynamic>)).toList();
   }
-  
-
 
   static Future<List<Option>> options(String path) async {
     final data = await _request('GET', path) as List;
-    return data
-        .map((e) => Option.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return data.map((e) => Option.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  static Future<Map<String, dynamic>> login(String phone, String password) async {
-    final res = await _request('POST', '/auth/login',
-        body: {'phone': phone, 'password': password});
+  static Future<Map<String, dynamic>> login(
+    String phone,
+    String password,
+  ) async {
+    final res = await _request(
+      'POST',
+      '/auth/login',
+      body: {'phone': phone, 'password': password},
+    );
     return res as Map<String, dynamic>;
   }
 
-  static Future<Map<String, dynamic>> register(Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> register(
+    Map<String, dynamic> body,
+  ) async {
     final res = await _request('POST', '/auth/register', body: body);
     return res as Map<String, dynamic>;
   }
@@ -104,14 +112,19 @@ class Api {
   }
 
   static Future<void> subscribe(int categoryId, int areaId) async {
-    await _request('POST', '/subscriptions',
-        body: {'category_id': categoryId, 'area_id': areaId}, auth: true);
+    await _request(
+      'POST',
+      '/subscriptions',
+      body: {'category_id': categoryId, 'area_id': areaId},
+      auth: true,
+    );
   }
 
   static Future<void> unsubscribe(int id) async {
     await _request('DELETE', '/subscriptions/$id', auth: true);
   }
-    static Future<List<Job>> myJobs() async {
+
+  static Future<List<Job>> myJobs() async {
     final data = await _request('GET', '/jobs/mine', auth: true) as List;
     return data.map((e) => Job.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -127,7 +140,8 @@ class Api {
   }
 
   static Future<List<Job>> pendingJobs() async {
-    final data = await _request('GET', '/admin/jobs/pending', auth: true) as List;
+    final data =
+        await _request('GET', '/admin/jobs/pending', auth: true) as List;
     return data.map((e) => Job.fromJson(e as Map<String, dynamic>)).toList();
   }
 
@@ -142,19 +156,26 @@ class Api {
   static Future<void> rejectJob(int id) async {
     await _request('POST', '/admin/jobs/$id/reject', auth: true);
   }
-    static Future<EmployerInfo> employerMe() async {
+
+  static Future<EmployerInfo> employerMe() async {
     final res = await _request('GET', '/employer/me', auth: true);
     return EmployerInfo.fromJson(res as Map<String, dynamic>);
   }
 
   static Future<void> uploadDocument(
-      String docType, List<int> bytes, String filename) async {
+    String docType,
+    List<int> bytes,
+    String filename,
+  ) async {
     final req = http.MultipartRequest(
-        'POST', Uri.parse('$baseUrl/employer/documents'));
+      'POST',
+      Uri.parse('$baseUrl/employer/documents'),
+    );
     req.headers['Authorization'] = 'Bearer ${session.token}';
     req.fields['doc_type'] = docType;
-    req.files
-        .add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    req.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: filename),
+    );
     final streamed = await req.send();
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode == 401) await session.clear();
@@ -168,27 +189,44 @@ class Api {
   }
 
   static Future<String> documentUrl(int docId) async {
-    final res = await _request('GET', '/admin/documents/$docId/link',
-        auth: true) as Map<String, dynamic>;
+    final res =
+        await _request('GET', '/admin/documents/$docId/link', auth: true)
+            as Map<String, dynamic>;
     return '$baseUrl${res['path']}';
   }
 
   static Future<void> rejectEmployer(int id, String reason) async {
-    await _request('POST', '/admin/employers/$id/reject',
-        body: {'reason': reason}, auth: true);
+    await _request(
+      'POST',
+      '/admin/employers/$id/reject',
+      body: {'reason': reason},
+      auth: true,
+    );
   }
 
-  static Future<Map<String, dynamic>> sendOtp(String phone, String password,
-      {String channel = 'sms'}) async {
-    final res = await _request('POST', '/auth/otp/send',
-        body: {'phone': phone, 'password': password, 'channel': channel});
+  static Future<Map<String, dynamic>> sendOtp(
+    String phone,
+    String password, {
+    String channel = 'sms',
+  }) async {
+    final res = await _request(
+      'POST',
+      '/auth/otp/send',
+      body: {'phone': phone, 'password': password, 'channel': channel},
+    );
     return res as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> verifyOtp(
-      String phone, String password, String code) async {
-    final res = await _request('POST', '/auth/otp/verify',
-        body: {'phone': phone, 'password': password, 'code': code});
+    String phone,
+    String password,
+    String code,
+  ) async {
+    final res = await _request(
+      'POST',
+      '/auth/otp/verify',
+      body: {'phone': phone, 'password': password, 'code': code},
+    );
     return res as Map<String, dynamic>;
   }
 }
